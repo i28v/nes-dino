@@ -3,17 +3,12 @@
 ; ||||||||
 ; |||||||-> isJumping
 ; ||||||--> isFalling
-; |||||---> isWaitingToFall
-; ||||---->
-; |||----->
-; ||------>
-; |------->
-; --------> isCollidedWithEnemy
+; |||||---> (empty)
+; --------> (empty)
 
-isJumping = %00000001
-isFalling = %00000010
-isWaitingToFall = %00000100
-isCollidedWithEnemy = %10000000
+isJumping  = %00000001
+isFalling  = %00000010
+isGameOver = %00000001 ; for gameState
 
 collisionram = $700
 
@@ -34,22 +29,21 @@ collisionram = $700
 .segment "BSS"
 
 
-
 .segment "ZEROPAGE"
-
-playerXPos:            .res 1
-playerYPos:            .res 1
-cactiXPos:             .res 8
-cactiYPos:             .res 8
-playerState:           .res 1
-playerJumpSpeed:       .res 1
-playerFallSpeed:       .res 1
-cactusMoveSpeed:       .res 1
-collisionHandler:      .res 1
-walkingAnimationState: .res 1
-walkingAnimationDelay: .res 1
-cactusSpawnDelay: .res 1
-cactType: .res 8
+gameState:              .res 1
+playerXPos:             .res 1
+playerYPos:             .res 1
+cactus1XPos:            .res 1
+cactus1YPos:            .res 1
+playerState:            .res 1
+playerJumpSpeed:        .res 1
+playerFallSpeed:        .res 1
+cactusMoveSpeed:        .res 1
+collisionHandler:       .res 1
+walkingAnimationState:  .res 1
+walkingAnimationDelay:  .res 1
+playerXCollisionIndex:  .res 1   
+playerYCollisionIndex:  .res 1
 
 .segment "STARTUP"
 
@@ -114,10 +108,16 @@ initCollisionRam:
     inx
     cpx #$78
     bne initCollisionRam
+    lda #$02
+    sta cactusMoveSpeed
     lda #$03
     sta playerXPos
     lda #$A2
     sta playerYPos
+    lda #$A2 
+    sta cactus1XPos
+    lda #$AA
+    sta cactus1YPos
 
 enableNMI:
     cli 
@@ -164,7 +164,6 @@ jump:
     lda #$0B
     sta playerJumpSpeed
     rts
-
 
 adjustLegPosition:
     lda #$08
@@ -238,6 +237,10 @@ Left_not_pressed:
     bne Right_not_pressed
 Right_not_pressed:
 end_input:
+    lda cactus1XPos
+    sec 
+    sbc cactusMoveSpeed
+    sta cactus1XPos
     inc walkingAnimationDelay
     lda walkingAnimationDelay
     cmp #$0A
@@ -309,6 +312,37 @@ checkForFall:
     eor #isFalling
     sta playerState
 :
+    ldx #$00
+    stx playerXCollisionIndex
+    stx playerYCollisionIndex
+    ldy #$00
+checkCollisionY:
+    ldx #$00
+    stx playerXCollisionIndex
+checkCollisionX:
+    lda playerXPos
+    clc 
+    adc playerXCollisionIndex
+    cmp cactus1XPos
+    bne :+
+    lda playerYPos 
+    clc 
+    adc playerYCollisionIndex
+    cmp cactus1YPos
+    bne :+
+    lda gameState
+    ora #isGameOver
+    sta gameState
+:
+    inx 
+    inc playerXCollisionIndex
+    cpx #$18
+    bne checkCollisionX
+    iny 
+    inc playerYCollisionIndex
+    cpy #$18
+    bne checkCollisionY
+endCheckCOllision:
     rts
     
 draw:
@@ -437,7 +471,6 @@ setWalkingToWalking2:
     jsr adjustLegPosition
     clc 
     adc #$03
-
 :
     sta $221
     lda #$00
@@ -462,7 +495,58 @@ setWalkingToWalking2:
     clc 
     adc playerXPos
     sta $227
-    
+    lda #$08
+    clc 
+    adc cactus1YPos 
+    sta $228
+    lda #$04
+    sta $229
+    lda #$00
+    sta $22A
+    lda  #$08
+    clc 
+    adc cactus1XPos
+    sta $22B
+    lda #$08
+    clc 
+    adc cactus1YPos 
+    sta $22C
+    lda #$05
+    sta $22D
+    lda #$00
+    sta $22E
+    lda #$10
+    clc 
+    adc cactus1XPos
+    sta $22F
+    lda #$10
+    clc 
+    adc cactus1YPos 
+    sta $230
+    lda #$05
+    clc 
+    adc #$0F
+    sta $231
+    lda #$00
+    sta $232
+    lda  #$08
+    clc 
+    adc cactus1XPos
+    sta $233
+    lda #$10
+    clc 
+    adc cactus1YPos 
+    sta $234
+    lda #$05
+    clc 
+    adc #$10
+    sta $235
+    lda #$00
+    sta $236
+    lda #$10
+    clc 
+    adc cactus1XPos
+    sta $237
     rts 
 
 NMI:
@@ -470,8 +554,13 @@ NMI:
     sta $2003
     lda #$02
     sta $4014
+    lda gameState
+    and #isGameOver
+    cmp #$00
+    bne :+
     jsr draw 
     jsr update
+ :
     rti 
 
 PaletteData:
@@ -519,7 +608,6 @@ BitMask:
     .byte %00000100
     .byte %00000010
     .byte %00000001
-    
     
 .segment "VECTORS"
     .word NMI
