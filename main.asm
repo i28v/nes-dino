@@ -44,6 +44,8 @@ walkingAnimationState:  .res 1
 walkingAnimationDelay:  .res 1
 playerXCollisionIndex:  .res 1   
 playerYCollisionIndex:  .res 1
+cactus1XCollisionIndex: .res 1
+cactus1YCollisionIndex: .res 1
 
 .segment "STARTUP"
 
@@ -108,7 +110,7 @@ initCollisionRam:
     inx
     cpx #$78
     bne initCollisionRam
-    lda #$02
+    lda #$04
     sta cactusMoveSpeed
     lda #$03
     sta playerXPos
@@ -243,7 +245,7 @@ end_input:
     sta cactus1XPos
     inc walkingAnimationDelay
     lda walkingAnimationDelay
-    cmp #$0A
+    cmp #$06
     bne :+
     lda #$00
     sta walkingAnimationDelay
@@ -257,7 +259,7 @@ end_input:
     cmp #$00
     bne setWalkingStateToZero
     lda walkingAnimationDelay
-    cmp #$09
+    cmp #$05
     bne endWalkingAnimState     
     lda walkingAnimationState
     cmp #$01
@@ -323,12 +325,24 @@ checkCollisionX:
     lda playerXPos
     clc 
     adc playerXCollisionIndex
-    cmp cactus1XPos
+    pha 
+    lda cactus1XPos 
+    clc 
+    adc #$08
+    sta cactus1XCollisionIndex
+    pla 
+    cmp cactus1XCollisionIndex
     bne :+
     lda playerYPos 
     clc 
     adc playerYCollisionIndex
-    cmp cactus1YPos
+    pha 
+    lda cactus1YPos
+    clc 
+    adc #$08
+    sta cactus1YCollisionIndex
+    pla 
+    cmp cactus1YCollisionIndex
     bne :+
     lda gameState
     ora #isGameOver
