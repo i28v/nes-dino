@@ -61,7 +61,7 @@ Reset:
     stx $4017
     ldx #$FF
     txs 
-    inx 
+    ldx #$00
     stx $2000
     stx $2001 
     stx $4010
@@ -75,10 +75,10 @@ clearmem:
     sta $0100, x
     sta $0300, x
     sta $0400, x
-    sta $0500, x 
+    sta $0500, x
     sta $0600, x
     sta $0700, x
-    lda #$FF
+    lda #$FE
     sta $0200, x
     lda #$00
     inx 
@@ -327,7 +327,7 @@ checkCollisionX:
     adc playerXCollisionIndex
     pha 
     lda cactus1XPos 
-    clc 
+    clc
     adc #$08
     sta cactus1XCollisionIndex
     pla 
