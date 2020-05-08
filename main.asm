@@ -1,17 +1,8 @@
-; playerState bitwise bool
-; 00000000
-; ||||||||
-; |||||||-> isJumping
-; ||||||--> isFalling
-; |||||---> (empty)
-; --------> (empty)
-
 isJumping  = %00000001
 isFalling  = %00000010
-isGameOver = %00000001 ; for gameState
+isGameOver = %00000001 
 
 collisionram = $700
-
 
 .segment "HEADER"
 
@@ -28,34 +19,30 @@ collisionram = $700
 
 .segment "BSS"
 
-
 .segment "ZEROPAGE"
-gameState:              .res 1
-playerXPos:             .res 1
-playerYPos:             .res 1
-cactus1XPos:            .res 1
-cactus1YPos:            .res 1
-cactus2XPos:            .res 1
-cactus2YPos:            .res 1
-cactusTmpX:             .res 1
-cactusTmpY:             .res 1
-playerState:            .res 1
-playerJumpSpeed:        .res 1
-playerFallSpeed:        .res 1
-cactusMoveSpeed:        .res 1
-collisionHandler:       .res 1
-walkingAnimationState:  .res 1
-walkingAnimationDelay:  .res 1
-playerXCollisionIndex:  .res 1   
-playerYCollisionIndex:  .res 1
-cactusXCollisionIndex:  .res 1
-cactusYCollisionIndex:  .res 1
+
+gameState:             .res 1                  
+playerXPos:            .res 1
+playerYPos:            .res 1
+cactus1XPos:           .res 1
+cactus1YPos:           .res 1
+cactusTmpX:            .res 1
+cactusTmpY:            .res 1
+playerState:           .res 1
+playerJumpSpeed:       .res 1
+playerFallSpeed:       .res 1
+cactusMoveSpeed:       .res 1
+collisionHandler:      .res 1
+walkingAnimationState: .res 1
+walkingAnimationDelay: .res 1
+playerXCollisionIndex: .res 1
+playerYCollisionIndex: .res 1
+cactusXCollisionIndex: .res 1
+cactusYCollisionIndex: .res 1
 
 .segment "STARTUP"
 
-
 .segment "CODE"
-
 
 Reset:
     sei 
@@ -75,7 +62,6 @@ Reset:
 
 clearmem:
     sta $0000, x
-    sta $0100, x
     sta $0300, x
     sta $0400, x
     sta $0500, x
@@ -121,12 +107,8 @@ initCollisionRam:
     sta playerYPos
     lda #$A2 
     sta cactus1XPos
-    lda #$F1
-    sta cactus2XPos
     lda #$AA
     sta cactus1YPos
-    lda #$9F
-    sta cactus2YPos 
 
 enableNMI:
     cli 
@@ -138,7 +120,7 @@ enableNMI:
 Forever:
     jmp Forever
 
-CheckCollide:
+CheckBackgroundCollision:
     txa 
     lsr 
     lsr 
@@ -165,49 +147,7 @@ CheckCollide:
     lda collisionram, y
     and BitMask, x
     rts 
-
-checkCactusCollision:
-    ldx #$00
-    stx playerXCollisionIndex
-    stx playerYCollisionIndex
-    ldy #$00
-checkCollisionY:
-    ldx #$00
-    stx playerXCollisionIndex
-checkCollisionX:
-    lda playerXPos
-    clc 
-    adc playerXCollisionIndex
-    pha 
-    lda cactusTmpX
-    sta cactusXCollisionIndex
-    pla 
-    cmp cactusXCollisionIndex
-    bne :+
-    lda playerYPos 
-    clc 
-    adc playerYCollisionIndex
-    pha 
-    lda cactusTmpY
-    sta cactusYCollisionIndex
-    pla 
-    cmp cactusYCollisionIndex
-    bne :+
-    lda gameState
-    ora #isGameOver
-    sta gameState
-:
-    inx 
-    inc playerXCollisionIndex
-    cpx #$18
-    bne checkCollisionX
-    iny 
-    inc playerYCollisionIndex
-    cpy #$18
-    bne checkCollisionY
-endCheckCollision:
-    rts
-
+    
 jump:
     lda playerState
     ora #isJumping
@@ -292,10 +232,6 @@ end_input:
     sec 
     sbc cactusMoveSpeed
     sta cactus1XPos
-    lda cactus2XPos 
-    sec 
-    sbc cactusMoveSpeed
-    sta cactus2XPos
     inc walkingAnimationDelay
     lda walkingAnimationDelay
     cmp #$06
@@ -361,27 +297,65 @@ checkForFall:
     inc playerFallSpeed
     ldx playerXPos
     ldy playerYPos
-    jsr CheckCollide
+    jsr CheckBackgroundCollision
     beq :+
     lda playerState
     eor #isFalling
     sta playerState
 :
     lda cactus1XPos
+    clc 
+    adc #$08
     sta cactusTmpX
     lda cactus1YPos
-    sta cactusTmpY
-    jsr checkCactusCollision
-    lda cactus2XPos
-    sta cactusTmpX
-    lda cactus2YPos
     clc 
     adc #$08
     sta cactusTmpY
-    jsr checkCactusCollision
-
+    jmp checkCactusCollision
+checkCactusCollision:
+    ldx #$00
+    stx playerXCollisionIndex
+    stx playerYCollisionIndex
+    stx cactusXCollisionIndex
+    stx cactusYCollisionIndex
+    ldy #$00
+checkCollisionY:
+    ldx #$00
+    stx playerXCollisionIndex
+checkCollisionX:
+    lda playerXPos
+    clc 
+    adc playerXCollisionIndex
+    pha
+    lda cactusTmpX
+    sta cactusXCollisionIndex
+    pla
+    cmp cactusXCollisionIndex
+    bne :+
+    lda playerYPos 
+    clc 
+    adc playerYCollisionIndex
+    pha
+    lda cactusTmpY
+    sta cactusYCollisionIndex
+    pla
+    cmp cactusYCollisionIndex
+    bne :+
+    lda gameState
+    ora #isGameOver
+    sta gameState
+:
+    inx 
+    inc playerXCollisionIndex
+    cpx #$18
+    bne checkCollisionX
+    iny 
+    inc playerYCollisionIndex
+    cpy #$18
+    bne checkCollisionY
+endCheckCollision:
     rts
-    
+
 draw:
     lda #$08
     clc 
@@ -584,102 +558,6 @@ setWalkingToWalking2:
     clc 
     adc cactus1XPos
     sta $237
-    lda #$08
-    clc 
-    adc cactus2YPos 
-    sta $238
-    lda #$16
-    sta $239
-    lda #$00
-    sta $23A
-    lda #$08
-    clc 
-    adc cactus2XPos 
-    sta $23B
-    lda #$08
-    clc 
-    adc cactus2YPos
-    sta $23C
-    lda #$17
-    sta $23D
-    lda #$00
-    sta $23E
-    lda #$10
-    clc 
-    adc cactus2XPos
-    sta $23F
-    lda #$10
-    clc
-    adc cactus2YPos 
-    sta $240
-    lda #$26
-    sta $241
-    lda 00
-    sta $242
-    lda #$08
-    clc 
-    adc cactus2XPos 
-    sta $243
-    lda #$10
-    clc 
-    adc cactus2YPos 
-    sta $244
-    lda #$27
-    sta $245
-    lda #$00
-    sta $246
-    lda #$10
-    clc 
-    adc cactus2XPos 
-    sta $247
-    lda #$18
-    clc 
-    adc cactus2YPos 
-    sta $248
-    lda #$36
-    sta $249
-    lda #$00 
-    sta $24A
-    lda #$08
-    clc 
-    adc cactus2XPos
-    sta $24B
-    lda #$18
-    clc 
-    adc cactus2YPos 
-    sta $24C
-    lda #$37
-    sta $24D
-    lda #$00
-    sta $24E
-    lda #$10
-    clc 
-    adc cactus2XPos 
-    sta $24F
-    lda #$20
-    clc 
-    adc cactus2YPos 
-    sta $250
-    lda #$46
-    sta $251
-    lda #$00
-    sta $252
-    lda #$08
-    clc 
-    adc cactus2XPos
-    sta $253
-    lda #$20
-    clc 
-    adc cactus2YPos 
-    sta $254
-    lda #$47
-    sta $255
-    lda #$00
-    sta $256
-    lda #$10
-    clc 
-    adc cactus2XPos 
-    sta $257
     rts 
 
 NMI:
